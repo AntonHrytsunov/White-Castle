@@ -1,0 +1,17 @@
+# Python / venv
+.venv/
+__pycache__/
+*.pyc
+
+# macOS system files
+.DS_Store
+
+# Build artifacts
+build/
+dist/*
+
+# PyInstaller
+*.spec
+
+# Logs
+*.log
