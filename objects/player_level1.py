@@ -37,7 +37,7 @@ class Player:
         self.last_stamina_use = pygame.time.get_ticks()
 
         # Physics
-        self.speed = 5
+        self.speed = 3
         self.velocity_x = 0
         self.velocity_y = 0
         self.acceleration = 1.2
@@ -63,6 +63,12 @@ class Player:
         else:
             self.rect = pygame.Rect(100, self.base_y, 50, target_height)
             self.image = None
+        self.facing_left = False
+
+        # Смерть
+        self.is_dead = False
+        self.death_frames = []
+        self.death_animation_done = False
 
     def load_animations(self, hero_data, target_height):
         walk_path, cache_key, _ = self.get_animation_path_and_key(self.screen, hero_data, self.hero_scale, self.scale_x, self.scale_y)
@@ -71,6 +77,10 @@ class Player:
         jump_path = walk_path.replace("walk", "jump")
         jump_cache_key = (jump_path, self.hero_scale, self.scale_x, self.scale_y)
         self.jump_frames_right, self.jump_frames_left = self.load_animation_set(jump_path, jump_cache_key, target_height)
+
+        death_path = walk_path.replace("walk", "dead")
+        death_cache_key = (death_path, self.hero_scale, self.scale_x, self.scale_y)
+        self.death_frames_right, self.death_frames_left = self.load_animation_set(death_path, death_cache_key, target_height)
 
     def load_animation_set(self, path, cache_key, target_height):
         if cache_key in Player._frame_cache:
@@ -125,7 +135,12 @@ class Player:
         return surface
 
     def handle_input(self, dt):
+        if self.is_dead:
+            return
         keys = pygame.key.get_pressed()
+        # ⛔ Клавіша K — вбиває гравця для тесту
+        if keys[pygame.K_k]:
+            self.hp = 0
         mods = pygame.key.get_mods()
         direction = 0
 
@@ -164,9 +179,42 @@ class Player:
             self.on_ground = False
             self.stamina -= self.stamina_jump_cost
             self.last_stamina_use = pygame.time.get_ticks()
-            logging.debug(f"[Hero] Стрибок — стаміна: {self.stamina:.1f}")
 
     def update(self, dt):
+        # 💀 Якщо помер — запускаємо анімацію смерті і більше нічого
+        if self.hp <= 0:
+            if not self.is_dead:
+                self.is_dead = True
+                self.current_animation = "dead"
+                self.current_frame_index = 0
+                self.animation_timer = 0
+                self.velocity_x = 0
+                self.velocity_y = 0
+
+            if not self.death_animation_done and self.death_frames_right:
+                self.animation_timer += dt
+                frame_duration = 200  # ⏱️ 200 мс на кадр
+
+                if self.animation_timer >= frame_duration:
+                    self.animation_timer -= frame_duration
+                    self.current_frame_index += 1
+
+                    if self.current_frame_index >= len(self.death_frames_right):
+                        self.current_frame_index = len(self.death_frames_right) - 1
+                        self.death_animation_done = True
+                    else:
+                        # 🌀 Під час падіння зсуваємо тіло вперед і вниз
+                        if self.facing_left:
+                            self.rect.x -= 5
+                        else:
+                            self.rect.x += 5
+
+                        self.rect.y += int(10 * self.scale_y)
+
+                index = min(self.current_frame_index, len(self.death_frames_right) - 1)
+                self.image = self.death_frames_left[index] if self.facing_left else self.death_frames_right[index]
+            return
+
         # Гравітація і вертикальний рух
         self.velocity_y += self.gravity
         self.rect.y += self.velocity_y
@@ -180,7 +228,11 @@ class Player:
         self.rect.x += self.velocity_x
 
         # --- Анімація ---
-        self.facing_left = self.velocity_x < 0
+        # Зберігаємо останній напрямок руху, якщо рухається
+        if self.velocity_x > 0:
+            self.facing_left = False
+        elif self.velocity_x < 0:
+            self.facing_left = True
         moving = self.velocity_x != 0
 
         # === Анімація стрибка (один прохід) ===

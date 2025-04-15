@@ -724,10 +724,6 @@ class Spider:
 
         screen.blit(image_with_alpha, (screen_x, screen_y))
 
-        if self.fade_alpha > 0:
-            attack_text = self.font.render(f"Atk: {self.attack_count}", True, (255, 255, 255))
-            screen.blit(attack_text, (screen_x, screen_y - 20))
-
     def set_walking(self, walking: bool):
         """
         Встановлює стан ходьби павука:
@@ -836,7 +832,7 @@ class SpiderManager:
         self.spiders = []
 
         for x, scale in x_positions:
-            y_relative = 770*self.scale_y + (scale * 50*self.scale_y)
+            y_relative = 870*self.scale_y + (scale * 50*self.scale_y)
             y_base = int(y_relative * self.scale_y)
 
             spider = Spider(

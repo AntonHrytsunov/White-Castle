@@ -9,6 +9,7 @@ from objects.player_level1 import Player
 from objects.crow import CrowManager
 from objects.spider import SpiderManager
 from objects.home_tree import HomeTree
+from objects.dialog_box import DialogBox
 from utils.resource_loader import load_hero_stats
 
 
@@ -22,6 +23,7 @@ class Level1:
         self.screen = pygame.display.get_surface()
         self.started = False
         self.current_progress = 0.0
+        self.dialog_box = DialogBox(self.screen, "assets/menu_font.otf")
 
         # === Масштаб екрана ===
         self.scale_x = self.screen.get_width() / 1440
@@ -71,6 +73,9 @@ class Level1:
         # === Павуки ===
         self.spider_manager = SpiderManager(self.screen.get_height(), self.scale_y, audio_manager, self.scale_x)
         self.spider_manager.player = self.player
+
+        # === Дерево чарівника ===
+        self.tree_dialog_shown = False
 
         # === Звуки вовків ===
         self.howl_checkpoints = [
@@ -268,7 +273,6 @@ class Level1:
 
         # === Завантаження анімації ходьби ворони ===
         self.crows_walk_frames = load_animation(resource_path("assets/level_1/crow/walk"))
-
 
     def create_ground(self, long):
 
@@ -472,7 +476,11 @@ class Level1:
             pass
 
     def update(self):
-
+        if self.dialog_box.active and self.dialog_box.pause_player:
+            now = pygame.time.get_ticks()
+            self.last_update_time = now  # ⏱️ оновлюємо таймер, щоб уникнути стрибка
+            self.dialog_box.update(0)
+            return
         # --- ОНОВЛЕННЯ ФОНУ ---
         for i in range(len(self.bg_trees_positions)):
             if self.bg_trees_positions[i] <= -self.bg_trees_width:
@@ -507,6 +515,7 @@ class Level1:
             self.fog2_positions[i] -= fog_idle_scroll * 0.5
             if self.fog2_positions[i] <= -self.fog2_width:
                 self.fog2_positions[i] += self.fog2_width * len(self.fog2_positions)
+
 
         # --- ОНОВЛЕННЯ ГЕРОЯ ---
         self.player.handle_input(dt)
@@ -554,6 +563,20 @@ class Level1:
         # Оновлення дерева лісовика
         self.home_tree.update(hero_world_x)
 
+        # === Взаємодія з деревом лісовика ===
+        if (
+                abs(hero_world_x - self.home_tree.x_world) < 100 and
+                not self.dialog_box.active and
+                not self.tree_dialog_shown
+        ):
+            self.tree_dialog_shown = True  # 🚫 Показуємо лише один раз
+            self.dialog_box.show(
+                "Ти бачиш старе дерево з дуплом. У ньому щось блимає...",
+                ["Зазирнути всередину", "Відійти"],
+                on_select=self.handle_tree_choice,
+                pause_player=True
+            )
+
         # Оновлення ворон
         self.crow_manager.update(
             hero_world_x=hero_world_x,
@@ -577,13 +600,19 @@ class Level1:
         self.world_x += self.scroll_velocity
 
     def handle_events(self, events):
-        # --- Обробка подій ---
         for event in events:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    self.music_paused = True
-                    self.pause()
-                    self.scene_manager.change_scene("pause")
+            # 🟢 Пауза працює завжди
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self.music_paused = True
+                self.pause()
+                self.scene_manager.change_scene("pause")
+                return  # ⏹️ після паузи інші події не обробляємо
+
+        # 🟡 Обробка діалогу, якщо активний
+        if self.dialog_box.active:
+            for event in events:
+                self.dialog_box.handle_event(event)
+            return
 
     def render(self, screen):
         # --- Темний базовйи фон ---
@@ -628,6 +657,8 @@ class Level1:
 
         # --- Завершальний шар туману для глибини ---
         draw_layer(screen, self.fog2_texture, self.fog2_positions, 0.0810)
+
+        self.dialog_box.draw()
 
     def stop(self):
         self.started = False
@@ -694,3 +725,10 @@ class Level1:
         pygame.mixer.music.unpause()
         self.music_paused = False
         self.last_update_time = pygame.time.get_ticks()
+
+    def handle_tree_choice(self, index, option_text):
+        if index == 0:
+            print("🧙‍♂️ Гравець зазирнув у дупло — щось трапиться...")
+            # TODO: тут можеш додати новий діалог або змінити стан
+        elif index == 1:
+            print("🚶 Гравець відійшов.")

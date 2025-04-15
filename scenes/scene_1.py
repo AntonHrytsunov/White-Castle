@@ -16,15 +16,15 @@ class Scene1:
         self.screen = pygame.display.get_surface()
 
         self.music_playlist = [
-            ("assets/scene/intro/house.mp3", 2000),
+            ("assets/scene/intro/house.mp3", 1),
             ("assets/scene/intro/intro.mp3", 2000),
         ]
         self.image_sequence = [
             ("assets/scene/intro/house.gif", 10000, 2000, 2000),
             ("assets/scene/intro/village.gif", 10000, 2000, 2000),
-            ("assets/scene/intro/village2.png", 10000, 2000, 3000),
+            ("assets/scene/intro/village2.gif", 10000, 2000, 3000),
             ("assets/scene/intro/black.png", 8000, 2000, 0),
-            ("assets/scene/intro/house2.png", 5000, 2000, 1000),
+            ("assets/scene/intro/house2.gif", 5000, 2000, 1000),
             ("assets/scene/intro/map.png", 4750, 1000, 0),
             ("assets/scene/intro/house3.png", 4000, 0, 100),
             ("assets/scene/intro/village_war.png", 4000, 100, 100),
@@ -117,10 +117,10 @@ class Scene1:
         self.gif_frame_index = 0
         self.gif_frame_time = 0
 
-        pygame.mixer.music.set_endevent(pygame.USEREVENT + 1)
+        pygame.mixer.music.set_endevent(pygame.USEREVENT + 10)
+        self.pause_before_next_track = 0
 
     def start(self):
-        pygame.event.clear(pygame.USEREVENT + 1)
         pygame.mixer.music.stop()
 
         self.current_image_index = 0
@@ -135,11 +135,7 @@ class Scene1:
         self.start_time = pygame.time.get_ticks()
         self.text_start_time = pygame.time.get_ticks()
 
-        pygame.event.clear(pygame.USEREVENT + 1)
-        pygame.mixer.music.stop()
-
         self.current_music_index = 0
-        pygame.time.set_timer(pygame.USEREVENT + 1, 0)
 
         self.music_paused = False
         self.play_next_track()
@@ -151,13 +147,12 @@ class Scene1:
     def play_next_track(self):
         if self.current_music_index < len(self.music_playlist):
             track, pause = self.music_playlist[self.current_music_index]
-            try:
-                self.audio_manager.play_music(track)
-                duration = pygame.mixer.Sound(resource_path(track)).get_length()
-                pygame.time.set_timer(pygame.USEREVENT + 1, int(duration * 1000 + pause), loops=1)
-                self.current_music_index += 1
-            except Exception as e:
-                pass
+
+            pygame.mixer.music.set_endevent(pygame.USEREVENT + 10)
+            self.audio_manager.play_music(track, loops=0)
+
+            self.pause_before_next_track = pause
+            self.current_music_index += 1
 
     def update(self):
         if self.is_paused:
@@ -254,7 +249,12 @@ class Scene1:
                     self.scene_manager.change_scene("HeroCreator")
                 elif event.key == pygame.K_ESCAPE:
                     self.pause()
-            elif event.type == pygame.USEREVENT + 1:
+
+
+            elif event.type == pygame.USEREVENT + 10:
+                pygame.time.set_timer(pygame.USEREVENT + 11, self.pause_before_next_track, loops=1)
+
+            elif event.type == pygame.USEREVENT + 11:
                 self.play_next_track()
 
     def pause(self):

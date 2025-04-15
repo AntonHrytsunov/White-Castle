@@ -4,6 +4,7 @@ from utils.resource_loader import resource_path
 
 class HomeTree:
     def __init__(self, position_x, scale_x, scale_y, screen_height):
+        self.x_world = position_x
         logging.info("[HomeTree] Ініціалізація Дерева лісовика")
 
         # Координата X у світі

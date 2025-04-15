@@ -21,15 +21,14 @@ class AudioManager:
 
     def play_music(self, file_path, loops=-1):
         full_path = resource_path(file_path)
-        if self.current_music != full_path:
-            self.stop_music()
-            try:
-                pygame.mixer.music.load(full_path)
-                pygame.mixer.music.set_volume(self.music_volume)
-                pygame.mixer.music.play(loops)
-                self.current_music = full_path
-            except Exception as e:
-                pass
+        self.stop_music()
+        try:
+            pygame.mixer.music.load(full_path)
+            pygame.mixer.music.set_volume(self.music_volume)
+            pygame.mixer.music.play(loops)
+            self.current_music = full_path
+        except Exception as e:
+            pass
 
     def stop_music(self):
         pygame.mixer.music.stop()
