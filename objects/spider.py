@@ -277,7 +277,6 @@ class Spider:
             if (self.walk_direction == 1 and self.x > self.flee_target_x) or \
                     (self.walk_direction == -1 and self.x < self.flee_target_x):
                 self.set_walking(False)
-                logger.info("[Spider] Павук втік за межі.")
             self.animate(dt)
             return
 
@@ -564,7 +563,7 @@ class Spider:
         if self.manager:
             self.manager.active_sounds.append(self.jump_sound)
 
-    def handle_jump(self, scale_y, player_x):
+    def handle_jump(self, world_x, player_x):
         """
         Оновлює координати павука під час стрибка.
         Застосовує гравітацію, перевіряє атаку під час стрибка та завершення польоту.
@@ -578,8 +577,6 @@ class Spider:
             self.jumping = False
             self.y = self.ground_y
             return
-
-        self.scale_y = scale_y
 
         # ⛅ Рух по X і Y
         self.x += self.jump_vx
@@ -617,7 +614,8 @@ class Spider:
                 self.should_flee_after_jump = False
                 self.start_fleeing(
                     screen_width=pygame.display.get_surface().get_width(),
-                    world_x=player_x - self.walk_frames[0].get_width() // 2
+                    world_x=world_x,
+                    player_x=player_x
                 )
             self.y = self.ground_y
             self.jumping = False
@@ -657,29 +655,29 @@ class Spider:
             if self.manager:
                 self.manager.active_sounds.append(self.death_sound)
 
-    def start_fleeing(self, screen_width, world_x):
+    def start_fleeing(self, screen_width, world_x, player_x):
         """
-        Встановлює всі параметри втечі.
+        Встановлює всі параметри втечі залежно від позиції павука відносно гравця.
         """
         self.fleeing = True
         spider_center_x = self.x + self.walk_frames[0].get_width() // 2
-        screen_center_x = world_x + screen_width // 2
 
-        if spider_center_x < screen_center_x:
+        if spider_center_x < player_x:
+            # Павук лівіше — тікає вліво
             self.flee_target_x = world_x - screen_width
             self.walk_direction = -1
             self.flipped = False
             self.walk_frames = self.walk_frames_original
         else:
+            # Павук правіше — тікає вправо
             self.flee_target_x = world_x + screen_width * 2
             self.walk_direction = 1
             self.flipped = True
             self.walk_frames = [pygame.transform.flip(f, True, False) for f in self.walk_frames_original]
 
         self.set_walking(True)
-        logger.info(f"[Spider] Павук тікає до {self.flee_target_x}")
 
-    def flee_from_dead_player(self, screen_width, world_x):
+    def flee_from_dead_player(self, screen_width, world_x, player_x):
         """
         Якщо павук стрибає — чекаємо завершення стрибка, тоді тікаємо.
         Інакше — тікаємо одразу.
@@ -691,7 +689,7 @@ class Spider:
             self.should_flee_after_jump = True
             return
 
-        self.start_fleeing(screen_width, world_x)
+        self.start_fleeing(screen_width, world_x, player_x)
 
     def animate(self, dt):
         """
@@ -879,15 +877,15 @@ class SpiderManager:
 
     def spawn_initial_spiders(self):
         x_positions = [
-            (2000, 0.6),
-            (2050, 0.65),
-            (2950, 0.55),
-            (2100, 0.4),
-            (2100, 0.4),
-            (2100, 0.4),
-            (2100, 0.4),
-            (2100, 0.4),
-            (2100, 0.4),
+            #(2000, 0.6),
+            #(2050, 0.65),
+            #(2950, 0.55),
+            #(2100, 0.4),
+            #(2100, 0.4),
+            #(2100, 0.4),
+            #(2100, 0.4),
+            #(2100, 0.4),
+            #(2100, 0.4),
             (2500, 1.3),
         ]
 
@@ -933,8 +931,11 @@ class SpiderManager:
 
         if self.player.hp <= 0:
             for spider in self.spiders:
-                spider.flee_from_dead_player(screen_width=pygame.display.get_surface().get_width(),
-                                             world_x=hero_world_x)
+                spider.flee_from_dead_player(
+                    screen_width=pygame.display.get_surface().get_width(),
+                    world_x=hero_world_x,
+                    player_x=player_center_x
+                )
 
         self.player = player
 

@@ -54,14 +54,12 @@ class Crow:
             fly = [pygame.transform.flip(f, True, False) for f in fly]
         self.idle_frames = idle
         # Картання (caw)
-        self.caw_frames = self.load_caw_frames()
         self.cawing = False
         self.caw_probability = 0.1  # Ймовірність почати "картати" при кожному update
         self.caw_sound_played = False
 
         self.fly_frames = fly
 
-        self.current_animation = "idle"
         self.current_frame = start_frame
         self.frame_timer = 0
         self.frame_delay = self.FRAME_DELAY
@@ -224,26 +222,6 @@ class Crow:
         else:
             return self.idle_frames
 
-    def load_caw_frames(self):
-        folder = resource_path("assets/level_1/crow/idle/caw")
-        frames = []
-        try:
-            filenames = sorted(
-                [f for f in os.listdir(folder) if f.endswith(".png")],
-                key=lambda name: int(re.match(r"(\d+)\.png", name).group(1))
-            )
-            for filename in filenames:
-                img = pygame.image.load(os.path.join(folder, filename)).convert_alpha()
-                if self.flipped:
-                    img = pygame.transform.flip(img, True, False)
-                frames.append(pygame.transform.scale(
-                    img,
-                    (int(img.get_width()), int(img.get_height()))  # масштаб можна адаптувати
-                ))
-        except Exception as e:
-            logger.warning(f"[Crow] Не вдалося завантажити caw-кадри: {e}")
-        return frames
-
 
 class CrowManager:
     def __init__(self, audio_manager, screen, scale_x, scale_y):
@@ -266,7 +244,7 @@ class CrowManager:
             try:
                 def extract_number(filename):
                     match = re.match(r"(\d+)\.png", filename)
-                    return int(match.group(1)) if match else float('inf')  # несумісні файли підуть в кінець
+                    return int(match.group(1)) if match else float('inf')
 
                 for filename in sorted(os.listdir(folder), key=extract_number):
                     if filename.endswith(".png"):
@@ -280,10 +258,10 @@ class CrowManager:
                 logger.error(f"[CrowManager] Помилка завантаження анімації з {folder}: {e}")
             return frames
 
-
         self.idle_frames = load_frames(resource_path("assets/level_1/crow/idle"))
         self.fly_frames = load_frames(resource_path("assets/level_1/crow/fly"))
         self.walk_frames = load_frames(resource_path("assets/level_1/crow/walk"))
+        self.caw_frames = load_frames(resource_path("assets/level_1/crow/idle/caw"))
 
     def spawn_group(self, x):
         group_size = random.randint(2, 4)
@@ -308,6 +286,7 @@ class CrowManager:
                 audio_manager=self.audio_manager,
                 start_frame=start_frame
             )
+            crow.caw_frames = [f.copy() for f in self.caw_frames]  # ⬅️ нове
             crow.group_id = group_id
             crow.trigger_distance = random.randint(300, 500)
             crow.manager = self
