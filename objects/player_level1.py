@@ -70,6 +70,11 @@ class Player:
         self.death_frames = []
         self.death_animation_done = False
 
+        # Стан
+        self.stunned = False
+        self.stun_timer = 0
+        self.stun_duration = 500
+
     def load_animations(self, hero_data, target_height):
         walk_path, cache_key, _ = self.get_animation_path_and_key(self.screen, hero_data, self.hero_scale, self.scale_x, self.scale_y)
         self.walk_frames_right, self.walk_frames_left = self.load_animation_set(walk_path, cache_key, target_height)
@@ -81,6 +86,12 @@ class Player:
         death_path = walk_path.replace("walk", "dead")
         death_cache_key = (death_path, self.hero_scale, self.scale_x, self.scale_y)
         self.death_frames_right, self.death_frames_left = self.load_animation_set(death_path, death_cache_key, target_height)
+
+        # 🔄 Анімація стану
+        stun_path = walk_path.replace("walk", "stan")
+        stun_cache_key = (stun_path, self.hero_scale, self.scale_x, self.scale_y)
+        self.stun_frames_right, self.stun_frames_left = self.load_animation_set(stun_path, stun_cache_key,
+                                                                                target_height)
 
     def load_animation_set(self, path, cache_key, target_height):
         if cache_key in Player._frame_cache:
@@ -225,9 +236,40 @@ class Player:
             self.on_ground = True
 
         # Горизонтальний рух
-        self.rect.x += self.velocity_x
+        # 💫 Оновлюємо стан оглушення
+        if self.stunned:
+            self.stun_timer += dt
+            if self.stun_timer >= self.stun_duration:
+                self.stunned = False
+            # Забороняємо рух під час stun
+            self.velocity_x = 0
+        else:
+            self.rect.x += self.velocity_x
 
         # --- Анімація ---
+        # 💫 Оновлюємо стан оглушення
+        if self.stunned:
+            self.stun_timer += dt
+            if self.stun_timer >= self.stun_duration:
+                self.stunned = False
+            else:
+                # 🔁 Анімація стану
+                if self.current_animation != "stun":
+                    self.current_animation = "stun"
+                    self.current_frame_index = 0
+                    self.animation_timer = 0
+
+                frame_list = self.stun_frames_left if self.facing_left else self.stun_frames_right
+                if frame_list:
+                    if self.current_frame_index < len(frame_list):
+                        self.animation_timer += dt
+                        if self.animation_timer >= self.animation_speed:
+                            self.animation_timer = 0
+                            self.current_frame_index += 1
+                    index = min(self.current_frame_index, len(frame_list) - 1)
+                    self.image = frame_list[index]
+                return  # 🔒 Під час стану більше нічого не оновлюємо
+
         # Зберігаємо останній напрямок руху, якщо рухається
         if self.velocity_x > 0:
             self.facing_left = False

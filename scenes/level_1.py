@@ -649,11 +649,11 @@ class Level1:
         # --- Ворони ---
         self.crow_manager.draw(screen, self.world_x)
 
-        # --- Павуки ---
-        self.spider_manager.draw(screen, self.world_x)
-
         # --- Герой (виклик метода класу Player) ---
         self.player.draw(screen)
+
+        # --- Павуки ---
+        self.spider_manager.draw(screen, self.world_x)
 
         # --- Завершальний шар туману для глибини ---
         draw_layer(screen, self.fog2_texture, self.fog2_positions, 0.0810)
