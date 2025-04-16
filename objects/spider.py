@@ -605,9 +605,6 @@ class Spider:
                 # 🔽 Після вдалого удару припиняємо рух по X, падаємо вниз
                 self.jump_vx = 0
 
-            if self.attack_count >= 5:
-                self.die()
-
         # 🛬 Завершення стрибка (павук торкнувся землі)
         if self.y >= self.ground_y:
             if self.should_flee_after_jump:
@@ -882,10 +879,10 @@ class SpiderManager:
             #(2950, 0.55),
             #(2100, 0.4),
             #(2100, 0.4),
-            #(2100, 0.4),
-            #(2100, 0.4),
-            #(2100, 0.4),
-            #(2100, 0.4),
+            (2100, 0.4),
+            (2100, 0.4),
+            (2100, 0.4),
+            (2100, 0.4),
             (2500, 1.3),
         ]
 
@@ -923,6 +920,14 @@ class SpiderManager:
                 scale_x=scale_x
             )
 
+            # 💥 Миттєва смерть павука при фізичній атаці гравця
+            if player.attacking and not spider.dead and not spider.jumping:
+                spider_center_x = spider.x + spider.walk_frames[0].get_width() // 2
+                distance = abs(spider_center_x - player_center_x)
+                attack_radius = 50 * spider.scale_x * spider.scale
+                if distance < attack_radius:
+                    spider.die()
+
             # Якщо павука не потрібно видаляти — залишаємо в списку
             if not spider.should_be_removed(player_center_x):
                 new_spiders.append(spider)
@@ -936,8 +941,6 @@ class SpiderManager:
                     world_x=hero_world_x,
                     player_x=player_center_x
                 )
-
-        self.player = player
 
         self.spiders = new_spiders
 

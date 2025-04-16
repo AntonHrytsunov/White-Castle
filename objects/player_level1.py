@@ -75,43 +75,70 @@ class Player:
         self.stun_timer = 0
         self.stun_duration = 500
 
+        # Атака
+        self.attacking = False
+        self.attack_frame_index = 0
+        self.attack_animation_done = True
+        self.attack_cooldown = 500  # мілісекунд
+        self.last_attack_time = 0
+
     def load_animations(self, hero_data, target_height):
+
         walk_path, cache_key, _ = self.get_animation_path_and_key(self.screen, hero_data, self.hero_scale, self.scale_x, self.scale_y)
         self.walk_frames_right, self.walk_frames_left = self.load_animation_set(walk_path, cache_key, target_height)
 
-        jump_path = walk_path.replace("walk", "jump")
+        base_path = os.path.dirname(walk_path)
+
+        # Потім явно додаємо папки
+        jump_path = os.path.join(base_path, "jump")
         jump_cache_key = (jump_path, self.hero_scale, self.scale_x, self.scale_y)
-        self.jump_frames_right, self.jump_frames_left = self.load_animation_set(jump_path, jump_cache_key, target_height)
+        self.jump_frames_right, self.jump_frames_left = self.load_animation_set(jump_path, jump_cache_key,
+                                                                                target_height)
 
-        death_path = walk_path.replace("walk", "dead")
+        death_path = os.path.join(base_path, "dead")
         death_cache_key = (death_path, self.hero_scale, self.scale_x, self.scale_y)
-        self.death_frames_right, self.death_frames_left = self.load_animation_set(death_path, death_cache_key, target_height)
+        self.death_frames_right, self.death_frames_left = self.load_animation_set(death_path, death_cache_key,
+                                                                                  target_height)
 
-        # 🔄 Анімація стану
-        stun_path = walk_path.replace("walk", "stan")
+        stun_path = os.path.join(base_path, "stan")
         stun_cache_key = (stun_path, self.hero_scale, self.scale_x, self.scale_y)
         self.stun_frames_right, self.stun_frames_left = self.load_animation_set(stun_path, stun_cache_key,
                                                                                 target_height)
 
+        attack_path = os.path.join(base_path, "attack")
+        attack_cache_key = (attack_path, self.hero_scale, self.scale_x, self.scale_y)
+        self.attack_frames_right, self.attack_frames_left = self.load_animation_set(attack_path, attack_cache_key,
+                                                                                    target_height)
+
     def load_animation_set(self, path, cache_key, target_height):
-        if cache_key in Player._frame_cache:
-            return Player._frame_cache[cache_key]
 
         frames_right = []
         frames_left = []
 
-        if os.path.isdir(path):
-            for filename in sorted(os.listdir(path)):
-                if filename.endswith(".png"):
-                    image = pygame.image.load(os.path.join(path, filename)).convert_alpha()
-                    orig_width, orig_height = image.get_size()
-                    aspect_ratio = orig_width / orig_height
-                    target_width = int(target_height * aspect_ratio)
-                    scaled_image = pygame.transform.scale(image, (target_width, target_height))
+        if not os.path.isdir(path):
+            return frames_right, frames_left
 
-                    night_image = self.apply_night_filter(scaled_image.copy())
-                    frames_right.append(night_image)
-                    frames_left.append(pygame.transform.flip(night_image.copy(), True, False))
+        files = sorted(os.listdir(path))
+        for filename in files:
+            if not filename.lower().endswith(".png") or filename.startswith("."):
+                continue
+
+            full_path = os.path.join(path, filename)
+            try:
+                image = pygame.image.load(full_path).convert_alpha()
+
+                orig_width, orig_height = image.get_size()
+                aspect_ratio = orig_width / orig_height
+                target_width = int(target_height * aspect_ratio)
+                scaled_image = pygame.transform.scale(image, (target_width, target_height))
+
+                night_image = self.apply_night_filter(scaled_image.copy())
+                frames_right.append(night_image)
+                frames_left.append(pygame.transform.flip(night_image.copy(), True, False))
+
+            except Exception as e:
+                pass
+
 
         Player._frame_cache[cache_key] = (frames_right, frames_left)
         return frames_right, frames_left
@@ -148,13 +175,32 @@ class Player:
     def handle_input(self, dt):
         if self.is_dead:
             return
+
         keys = pygame.key.get_pressed()
-        # ⛔ Клавіша K — вбиває гравця для тесту
-        if keys[pygame.K_k]:
-            self.hp = 0
         mods = pygame.key.get_mods()
         direction = 0
 
+        now = pygame.time.get_ticks()
+
+        # Атака — дозволено лише якщо гравець стоїть на землі та не атакує
+        if keys[
+            pygame.K_f] and not self.attacking and self.on_ground and now - self.last_attack_time >= self.attack_cooldown:
+            frame_list = self.attack_frames_left if self.facing_left else self.attack_frames_right
+            if frame_list:
+                self.attacking = True
+                self.attack_animation_done = False
+                self.current_animation = "attack"
+                self.attack_frame_index = 0
+                self.animation_timer = 0
+                self.velocity_x = 0
+                self.last_attack_time = now
+                return  # ⛔ Блокуємо інші дії цього кадру
+
+        # Заборона будь-якого іншого керування під час атаки
+        if self.attacking:
+            return
+
+        # Рух вліво/вправо
         if keys[pygame.K_RIGHT]:
             direction = 1
         elif keys[pygame.K_LEFT]:
@@ -184,7 +230,7 @@ class Player:
             if abs(self.velocity_x) < 0.5:
                 self.velocity_x = 0
 
-        # Стрибок — тільки якщо є стаміна
+        # Стрибок — дозволено тільки якщо не атакуємо, стоїмо на землі і є стаміна
         if keys[pygame.K_SPACE] and self.on_ground and self.stamina >= self.stamina_jump_cost:
             self.velocity_y = self.jump_power
             self.on_ground = False
@@ -246,7 +292,22 @@ class Player:
         else:
             self.rect.x += self.velocity_x
 
-        # --- Анімація ---
+        # === Атака (анімація з phis_atack) ===
+        if self.attacking and not self.attack_animation_done:
+            frame_list = self.attack_frames_left if self.facing_left else self.attack_frames_right
+            if frame_list:
+                self.animation_timer += dt
+                if self.animation_timer >= self.animation_speed:
+                    self.animation_timer = 0
+                    self.attack_frame_index += 1
+                    if self.attack_frame_index >= len(frame_list):
+                        self.attack_animation_done = True
+                        self.attacking = False
+                        return
+            index = min(self.attack_frame_index, len(frame_list) - 1)
+            self.image = frame_list[index]
+            return  # ❗ Під час атаки не виконуємо інші дії
+
         # 💫 Оновлюємо стан оглушення
         if self.stunned:
             self.stun_timer += dt
@@ -329,6 +390,14 @@ class Player:
         self.velocity_x = 0
         self.velocity_y = 0
         self.on_ground = True
+
+        # Скидання анімаційного стану
+        self.current_animation = "idle"
+        self.current_frame_index = 0
+        self.animation_timer = 0
+        self.attacking = False
+        self.attack_frame_index = 0
+        self.attack_animation_done = True
 
     def draw(self, screen):
         if self.image:

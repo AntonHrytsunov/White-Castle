@@ -608,6 +608,7 @@ class Level1:
                 self.scene_manager.change_scene("pause")
                 return  # ⏹️ після паузи інші події не обробляємо
 
+
         # 🟡 Обробка діалогу, якщо активний
         if self.dialog_box.active:
             for event in events:
