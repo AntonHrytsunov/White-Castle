@@ -182,7 +182,6 @@ class Spider:
             sound.set_volume(volume)
             return sound
         except Exception as e:
-            logger.warning(f"Не вдалося завантажити звук: {path}: {e}")
             return None
 
     def flip_images(self):
@@ -635,7 +634,6 @@ class Spider:
         if self.dead:
             return  # Уже мертвий
 
-        logger.info("[Spider] Павук загинув.")
         self.dead = True
         self.dead_animation_done = False
         self.set_walking(False)
@@ -765,11 +763,9 @@ class Spider:
     def draw(self, screen, world_x):
         frames = self.get_current_frames()
         if not frames:
-            logger.warning("[Spider] Немає кадрів для поточного стану — пропуск промальовки.")
             return
 
         if self.current_frame >= len(frames):
-            logger.warning(f"[Spider] Поточний кадр {self.current_frame} > {len(frames) - 1} — обнуляємо.")
             self.current_frame = 0
 
         current_image = frames[self.current_frame]
@@ -778,7 +774,6 @@ class Spider:
 
         image_with_alpha = current_image.copy()
         image_with_alpha.set_alpha(self.fade_alpha)
-
         screen.blit(image_with_alpha, (screen_x, screen_y))
 
     def set_walking(self, walking: bool):
@@ -921,12 +916,17 @@ class SpiderManager:
             )
 
             # 💥 Миттєва смерть павука при фізичній атаці гравця
-            if player.attacking and not spider.dead and not spider.jumping:
-                spider_center_x = spider.x + spider.walk_frames[0].get_width() // 2
-                distance = abs(spider_center_x - player_center_x)
-                attack_radius = 50 * spider.scale_x * spider.scale
-                if distance < attack_radius:
-                    spider.die()
+            spider_center_x = spider.x + spider.walk_frames[0].get_width() // 2
+            distance = abs(spider_center_x - player_center_x)
+            attack_radius = 130 * spider.scale_x * (spider.scale / 2)
+
+            if (
+                    player.attacking and
+                    not spider.dead and
+                    #not spider.jumping and
+                    distance < attack_radius
+            ):
+                spider.die()
 
             # Якщо павука не потрібно видаляти — залишаємо в списку
             if not spider.should_be_removed(player_center_x):
@@ -949,7 +949,6 @@ class SpiderManager:
             self.player.hp -= amount
             if self.player.hp < 0:
                 self.player.hp = 0
-            logging.info(f"[SpiderManager] Гравець отримав {amount} урону. HP: {self.player.hp}")
 
     def draw(self, screen, world_x):
         """

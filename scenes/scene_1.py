@@ -26,7 +26,7 @@ class Scene1:
             ("assets/scene/intro/black.png", 8000, 2000, 0),
             ("assets/scene/intro/house2.gif", 5000, 2000, 1000),
             ("assets/scene/intro/map.png", 4750, 1000, 0),
-            ("assets/scene/intro/house3.png", 4000, 0, 100),
+            ("assets/scene/intro/house3.gif", 4000, 0, 100),
             ("assets/scene/intro/village_war.png", 4000, 100, 100),
             ("assets/scene/intro/image2.png", 8000, 0, 1000),
             ("assets/scene/intro/image3.png", 10000, 500, 3000),

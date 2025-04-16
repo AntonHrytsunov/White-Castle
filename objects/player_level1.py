@@ -183,8 +183,7 @@ class Player:
         now = pygame.time.get_ticks()
 
         # Атака — дозволено лише якщо гравець стоїть на землі та не атакує
-        if keys[
-            pygame.K_f] and not self.attacking and self.on_ground and now - self.last_attack_time >= self.attack_cooldown:
+        if keys[pygame.K_f] and not self.attacking and self.on_ground and now - self.last_attack_time >= self.attack_cooldown:
             frame_list = self.attack_frames_left if self.facing_left else self.attack_frames_right
             if frame_list:
                 self.attacking = True
@@ -195,6 +194,9 @@ class Player:
                 self.velocity_x = 0
                 self.last_attack_time = now
                 return  # ⛔ Блокуємо інші дії цього кадру
+
+        if keys[pygame.K_k]:
+            self.hp = 0
 
         # Заборона будь-якого іншого керування під час атаки
         if self.attacking:
